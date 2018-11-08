@@ -1,0 +1,9 @@
+{
+	"canvasWidth":720,
+	"canvasHeight":720,
+	"lineWidth": 1.0,
+	"lineColor": "gray",
+	"dotRadius": 2,
+	"dotColor": "black",
+	"margin": 2
+}

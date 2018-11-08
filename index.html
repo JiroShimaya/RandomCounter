@@ -1,0 +1,266 @@
+<!-- this 3DMaze code was originally written by demonixis.
+Jiro Shimaya downloaded the original code from github(https://github.com/demonixis/Maze3D)
+and changed some parts -->
+<!DOCTYPE html>
+<script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jcanvas/21.0.1/jcanvas.js"></script>
+<!-- BootstrapのCSS読み込み -->
+<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+<!-- BootstrapのJS読み込み -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<title>Perspective change</title>
+	<meta name="description" content="Random Counter" />
+	<meta name="author" content="Jiro Shimaya" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+</head>
+<script type="text/javascript">
+
+var config;
+var configFileName="config.json";
+var startTime;
+var id = 1;
+var nowCount = 0;
+
+$(document).ready(function(){
+	//configファイルの読み込み
+	$.getJSON(configFileName) // json読み込み開始
+	.done(function(json){ // jsonの読み込みに成功した時
+		console.log('成功');
+		config=json;
+		//canvasの大きさをconfigファイルに合わせて変更
+		$("canvas").attr({width:json.canvasWidth,height:json.canvasHeight});
+	})
+	.fail(function(){ // jsonの読み込みに失敗した時
+		console.log('失敗');
+	})
+	.always(function(){ // 成功/失敗に関わらず実行
+		console.log('必ず実行される');
+	});
+	//startボタンを押したらdotを描画する
+	$('.btn-start').click(function(){
+		//canvasをクリア
+		$('canvas').clearCanvas();
+		//分割線を描画
+		var divNum = $('input[name=divNum]').val();
+		divideCanvas(divNum);
+		//spinboxの値を表示する点の数として取得
+		var dotNum = $('input[name=dotNum]').val();
+		putDotsRandomly(dotNum);
+		//finishbuttonを押すまでstartbuttonを無効に
+		setState("counting");
+		//countをリセット
+		nowCount = 0;
+		//timerをスタート
+		startTime = new Date();
+	});
+
+	$(".btn-finish").click(function(){
+		var countingTime = new Date() - startTime;
+		//点の数、分割の数、数え上げ時間を格納
+		var lastResult = [id,$("input[name=dotNum]").val(),$("input[name=divNum]").val(),countingTime,nowCount];
+
+		var prevResult = $("textarea[name=result]").val();
+		var newResult = prevResult + '\n' + lastResult.join(',');
+		$("textarea[name=result]").val(newResult);
+		//idを増加させる
+		id+=1;
+		//ボタンの状態をpreparingにする
+		setState('preparing');
+	});
+
+	//結果のcsvファイルをダウンロードするボタンのイベントの設定
+	$(".btn-save").click(function(){
+		var result = $("textarea[name=result]").val();
+		var filename = "result.csv";
+		saveText(result, filename);
+	});
+
+	//キープッシュでスタートとストップができるように
+	$('body').on('keydown', function(e) {
+        console.log('===== keydown ====='); // 1番目に実行される
+        console.log(e);
+        console.log(e.keyCode);
+        switch(e.keyCode){
+        case 13://enter
+			if($('.btn-start').prop('disabled')==false){ //startボタンが有効なら
+				$('.btn-start').click();
+			}
+			else if($('.btn-finish').prop('disabled')==false){//finishボタンが有効なら
+				$('.btn-finish').click();
+			}
+        	break;
+        case 70: //f
+       		break;
+        case 83: //s
+        	break;
+        case 38: //↑
+        	nowCount+=1;
+        	console.log("nowCount:"+nowCount);
+			break;
+        }
+    });
+
+	//resultのヘッダーを記入
+	var headers = ["id","dotNumber","divideRatio","countingTimeMsec","numberOfTimesofPushingUpkey"];
+	$("textarea[name=result]").val(headers.join(","));
+
+	//buttonの状態をpreparingに
+	setState("preparing");
+});
+
+function putDotsRandomly(number=1){
+	var cW = $('canvas').width();
+	var cH = $('canvas').height();
+
+	//描画する点の半径
+	var pR = config.dotRadius;
+	//点を描画したくない領域
+	var margin = config.margin;
+
+	//描画できる場所のmaxとmin
+	var minX = pR + 1 + margin, minY = minX;
+	var maxX = cW - minX, maxY = cH - minY;
+
+	var dotPlaces=[];
+	for(var k=0;k<number;k++){
+		var pX, pY;
+		while(true){
+			pX = getRandomInt(minX, maxX + 1);
+			pY = getRandomInt(minY, maxY + 1);
+			//すでに置かれた点と重ならなさそうだったらリストに追加してループを抜ける(重ならなくなるまでは座標を取得し直す)
+			if(dotPlaces.indexOf([pX,pY])<0){
+				dotPlaces.push([pX,pY]);
+				//衝突半径の計算
+				var overlapUnit = pR*2+margin+1;
+				for(var i=1;i<overlapUnit;i++){
+					for(var j=1;Math.sqrt(i*i+j*j)<overlapUnit+1;j++){
+						var tmp;
+						tmp=[pX+i,pY+j];
+						if(dotPlaces.indexOf(tmp)<0)dotPlaces.push(tmp);
+						tmp=[pX+i,pY-j];
+						if(dotPlaces.indexOf(tmp)<0)dotPlaces.push(tmp);
+						tmp=[pX-i,pY+j];
+						if(dotPlaces.indexOf(tmp)<0)dotPlaces.push(tmp);
+						tmp=[pX-i,pY-j];
+						if(dotPlaces.indexOf(tmp)<0)dotPlaces.push(tmp);
+					}
+				}
+				break;
+			}
+		}
+
+		//描画
+		$('canvas').drawEllipse({
+			fillStyle: 'black',
+			x: pX, y: pY,
+			width: pR*2+1, height: pR*2+1,
+			fromCenter: true
+		});
+	}
+}
+
+function divideCanvas(number=1){
+	var cW = $('canvas').width();
+	var cH = $('canvas').height();
+
+	//分割の単位長の計算
+	var x = Math.floor(cW/number);
+	var y = Math.floor(cH/number);
+
+	//線の設定
+	var sColor=config.lineColor, sWidth = config.lineWidth;
+	for(var i=1;i<number;i++){
+		var tmpX = x*i, tmpY = y*i;
+		//縦線の描画
+		$('canvas').drawLine({
+			strokeStyle: sColor,
+			strokeWidth: sWidth,
+			x1:tmpX, y1:0, x2:tmpX, y2:cH
+		});
+		//横線の描画
+		$('canvas').drawLine({
+			strokeStyle: sColor,
+			strokeWidth: sWidth,
+			x1:0, y1:tmpY, x2:cW, y2:tmpY
+		});
+	}
+}
+
+//min以上,max未満のランダムな整数を返す
+function getRandomInt(min, max){
+	var dif = max - min;
+	return Math.floor(Math.random()*Math.floor(dif)+Math.floor(min));
+}
+
+
+//counting中かそうでないかによってボタンのdisable状態を設定する関数
+function setState(state){
+	switch(state){
+	case "preparing":
+		$('.btn-start').prop('disabled',false);
+		$('.btn-finish').prop('disabled',true);
+		$('input').prop('disabled',false);
+		break;
+	case "counting":
+		$('.btn-start').prop('disabled',true);
+		$('.btn-finish').prop('disabled',false);
+		$('input').prop('disabled',true);
+		break;
+	default:
+		break;
+	}
+}
+
+//結果を保存するための関数
+function saveText(text, filename){
+	var blob = new Blob([text], {type: "text/plain"}); // バイナリデータを作ります。
+
+	// IEか他ブラウザかの判定
+	if(window.navigator.msSaveBlob)
+	{
+	    // IEなら独自関数を使います。
+	    window.navigator.msSaveBlob(blob, filename);
+	} else {
+	    // それ以外はaタグを利用してイベントを発火させます
+	    var a = document.createElement("a");
+	    a.href = URL.createObjectURL(blob);
+	    a.target = '_blank';
+	    a.download = filename;
+	    a.click();
+	}
+}
+
+
+
+</script>
+
+<body>
+<div class="container-fluid">
+
+<div class="row">
+	<canvas width="720" height="720" class="center-block" style="border:1px solid #000;"></canvas>
+</div>
+<div class="row">
+	<a href="readme.html" target="_blank">How to?/Readme</a>
+</div>
+<div class="row">
+	<label>Number of dots<input type='number' name = "dotNum" style="width:60px" min = "1" max="1000" value="41"></label>
+	<label>Divide ratio<input type='number' name = "divNum" style="width:60px" min = "1" max="100" value="1"></label>
+	<button class='btn-start'>Start</button>
+	<button class='btn-finish'>Finish</button>
+</div>
+<div class="row">
+	<label>Result</label><button class="btn-save">Download</button>
+</div>
+<div class="row">
+	<textarea class="ta-result" name="result" cols="50" rows="5"></textarea>
+</div>
+
+</div>
+</body>
+</html>
