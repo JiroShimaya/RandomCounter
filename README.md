@@ -1,2 +1,2 @@
 # RandomCounter
-Application to measure counting number of dots which are randomly distributed
+Application to measure time for counting number of dots which are randomly distributed
