@@ -107,6 +107,11 @@ $(document).ready(function(){
 		setState('preparing');
 	});
 
+	$('.btn-count').click(function(){
+    	nowCount+=1;
+    	console.log("nowCount:"+nowCount);
+	});
+
 	//結果のcsvファイルをダウンロードするボタンのイベントの設定
 	$(".btn-save").click(function(){
 		var result = $("textarea[name=result]").val();
@@ -133,8 +138,7 @@ $(document).ready(function(){
         case 83: //s
         	break;
         case 38: //↑
-        	nowCount+=1;
-        	console.log("nowCount:"+nowCount);
+        	$('.btn-count').click();
 			break;
         }
     });
@@ -285,11 +289,13 @@ function setState(state){
 	case "preparing":
 		$('.btn-start').prop('disabled',false);
 		$('.btn-finish').prop('disabled',true);
+		$('.btn-count').prop('disabled',true);
 		$('input').prop('disabled',false);
 		break;
 	case "counting":
 		$('.btn-start').prop('disabled',true);
 		$('.btn-finish').prop('disabled',false);
+		$('.btn-count').prop('disabled',false);
 		$('input').prop('disabled',true);
 		break;
 	default:
@@ -360,8 +366,9 @@ function setCanvasSizeBasedOnWindowSize(){
 <div class="row">
 	<label>Number of dots<input type='number' name = "dotNum" style="width:60px" min = "1" max="1000" value="41"></label>
 	<label>Division number<input type='number' name = "divNum" style="width:60px" min = "1" max="100" value="1"></label>
-	<button class='btn-start'>Start</button>
-	<button class='btn-finish'>Finish</button>
+	<button class='btn btn-primary btn-start'>Start</button>
+	<button class='btn btn-primary btn-finish'>Finish</button>
+	<button class='btn btn-primary btn-count'>Count</button>
 </div>
 <div class="row">
 	<label>Result</label><button class="btn-save">Download</button>
