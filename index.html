@@ -62,11 +62,17 @@ $(document).ready(function(){
 	//ブラウザの画面サイズが変わったら必要に応じてcanvasの大きさを調節する。
 	$(window).resize(function(){
 		//alert("resized");
+		//smartphoneかtabletだったらリサイズしない
+		if(device=="sp" || device=="tab"){
 
-		setCanvasSizeBasedOnWindowSize();
-		//counting中だったら、finishボタンを押してリセットする(再描画時に点が消えるため)
-		if($('.btn-finish').prop('disabled')==false)
-			$('.btn-finish').click();
+		}else{ //other(=PC)だったらリサイズする
+			setCanvasSizeBasedOnWindowSize();
+			//counting中だったら、finishボタンを押してリセットする(再描画時に点が消えるため)
+			if($('.btn-finish').prop('disabled')==false)
+				$('.btn-finish').click();
+		}
+
+
 	});
 
 	//startボタンを押したらdotを描画する
@@ -312,10 +318,6 @@ function saveText(text, filename){
 
 //windowsizeに応じてcanvasのサイズを調節する
 function setCanvasSizeBasedOnWindowSize(){
-	//smartphoneかtabletだったらリサイズしない
-	if(device=="sp" || device=="tab"){
-		return;
-	}
 	//windowとconfigのサイズを取得
 	var wW = $(window).width(), wH = $(window).height();
 	var cW = config.canvasWidth, cH = config.canvasHeight;
