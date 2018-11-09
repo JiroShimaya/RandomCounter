@@ -26,26 +26,43 @@ var startTime;
 var id = 1;
 var nowCount = 0;
 
+//デバイスがスマホかipadかPCかを判定する sp, tab, or other
+var device = (function(){
+	var ua = navigator.userAgent;
+	if(ua.indexOf('iPhone') > 0 || ua.indexOf('iPod') > 0 || ua.indexOf('Android') > 0 && ua.indexOf('Mobile') > 0){
+		return 'sp';
+	}else if(ua.indexOf('iPad') > 0 || ua.indexOf('Android') > 0){
+		return 'tab';
+	}else{
+		return 'other';
+	}
+})();
+
+
+
 $(document).ready(function(){
 	//configファイルの読み込み
 	$.getJSON(configFileName) // json読み込み開始
 	.done(function(json){ // jsonの読み込みに成功した時
-		console.log('成功');
+		console.log('設定ファイル読み込み成功');
+		console.log(JSON.stringify(json));
 		config=json;
+
 		//canvasの大きさをconfigファイルに合わせて変更
 		setCanvasSizeBasedOnWindowSize();
 		//$("canvas").attr({width:json.canvasWidth,height:json.canvasHeight});
 	})
 	.fail(function(){ // jsonの読み込みに失敗した時
-		console.log('失敗');
+		console.log('設定ファイル読み込み失敗');
 	})
 	.always(function(){ // 成功/失敗に関わらず実行
-		console.log('必ず実行される');
+		//console.log('必ず実行される');
 	});
 
-	//ブラウザの画面サイズが変わったら必要に応じてドットの表示エリアを調節する
+	//ブラウザの画面サイズが変わったら必要に応じてcanvasの大きさを調節する。
 	$(window).resize(function(){
 		//alert("resized");
+
 		setCanvasSizeBasedOnWindowSize();
 		//counting中だったら、finishボタンを押してリセットする(再描画時に点が消えるため)
 		if($('.btn-finish').prop('disabled')==false)
@@ -137,28 +154,64 @@ function putDotsRandomly(number=1){
 	var minX = pR + 1 + margin, minY = minX;
 	var maxX = cW - minX, maxY = cH - minY;
 
-	var dotPlaces=[];
+	var dotPlaces={};
 	for(var k=0;k<number;k++){
 		var pX, pY;
 		while(true){
 			pX = getRandomInt(minX, maxX + 1);
 			pY = getRandomInt(minY, maxY + 1);
 			//すでに置かれた点と重ならなさそうだったらリストに追加してループを抜ける(重ならなくなるまでは座標を取得し直す)
-			if(dotPlaces.indexOf([pX,pY])<0){
-				dotPlaces.push([pX,pY]);
+			if(Object.keys(dotPlaces).indexOf(pX)<0){
+				dotPlaces[pX]=[];
+			}
+			if(dotPlaces[pX].indexOf(pY)<0){
 				//衝突半径の計算
-				var overlapUnit = pR*2+margin+1;
-				for(var i=1;i<overlapUnit;i++){
-					for(var j=1;Math.sqrt(i*i+j*j)<overlapUnit+1;j++){
-						var tmp;
-						tmp=[pX+i,pY+j];
-						if(dotPlaces.indexOf(tmp)<0)dotPlaces.push(tmp);
-						tmp=[pX+i,pY-j];
-						if(dotPlaces.indexOf(tmp)<0)dotPlaces.push(tmp);
-						tmp=[pX-i,pY+j];
-						if(dotPlaces.indexOf(tmp)<0)dotPlaces.push(tmp);
-						tmp=[pX-i,pY-j];
-						if(dotPlaces.indexOf(tmp)<0)dotPlaces.push(tmp);
+				var overlapUnit = pR*2+margin;
+				for(var i=0;i<overlapUnit+1;i++){
+					for(var j=0;Math.sqrt(i*i+j*j)<overlapUnit+1;j++){
+						var tmp, isInCanvas;
+
+						var tmpX, tmpY;
+
+						tmpX = pX+i;
+						if(Object.keys(dotPlaces).indexOf(tmpX)<0){
+							dotPlaces[tmpX]=[];
+						}
+
+						tmpY = pY+j;
+						//tmpがcanvas上にあるときtrue
+						isInCanvas = (tmpX> 0 && tmpX < cW && tmpY > 0 && tmpY < cH);
+						if(isInCanvas && dotPlaces[tmpX].indexOf(tmpY)<0){
+							dotPlaces[tmpX].push(tmpY);
+						}
+
+						tmpY = pY-j;
+						//tmpがcanvas上にあるときtrue
+						isInCanvas = (tmpX> 0 && tmpX < cW && tmpY > 0 && tmpY < cH);
+						if(isInCanvas && dotPlaces[tmpX].indexOf(tmpY)<0){
+							dotPlaces[tmpX].push(tmpY);
+						}
+
+
+						tmpX = pX-i;
+						if(Object.keys(dotPlaces).indexOf(tmpX)<0){
+							dotPlaces[tmpX]=[];
+						}
+
+						tmpY = pY+j;
+						//tmpがcanvas上にあるときtrue
+						isInCanvas = (tmpX> 0 && tmpX < cW && tmpY > 0 && tmpY < cH);
+						if(isInCanvas && dotPlaces[tmpX].indexOf(tmpY)<0){
+							dotPlaces[tmpX].push(tmpY);
+						}
+
+						tmpY = pY-j;
+						//tmpがcanvas上にあるときtrue
+						isInCanvas = (tmpX> 0 && tmpX < cW && tmpY > 0 && tmpY < cH);
+						if(isInCanvas && dotPlaces[tmpX].indexOf(tmpY)<0){
+							dotPlaces[tmpX].push(tmpY);
+						}
+
 					}
 				}
 				break;
@@ -166,13 +219,24 @@ function putDotsRandomly(number=1){
 		}
 
 		//描画
+
 		$('canvas').drawEllipse({
 			fillStyle: 'black',
 			x: pX, y: pY,
 			width: pR*2+1, height: pR*2+1,
 			fromCenter: true
 		});
+
 	}
+
+
+	for(var i=0;i<dotPlaces.length;i++){
+		var tmp=dotPlaces[i];
+		//console.log(JSON.stringify(tmp));
+	}
+
+	console.log(JSON.stringify(dotPlaces.length));
+
 }
 
 function divideCanvas(number=1){
@@ -248,10 +312,13 @@ function saveText(text, filename){
 
 //windowsizeに応じてcanvasのサイズを調節する
 function setCanvasSizeBasedOnWindowSize(){
+	//smartphoneかtabletだったらリサイズしない
+	if(device=="sp" || device=="tab"){
+		return;
+	}
 	//windowとconfigのサイズを取得
 	var wW = $(window).width(), wH = $(window).height();
 	var cW = config.canvasWidth, cH = config.canvasHeight;
-	console.log(JSON.stringify(config));
 
 	var newWidth = cW, newHeight = cH;
 
