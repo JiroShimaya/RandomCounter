@@ -33,7 +33,8 @@ $(document).ready(function(){
 		console.log('成功');
 		config=json;
 		//canvasの大きさをconfigファイルに合わせて変更
-		$("canvas").attr({width:json.canvasWidth,height:json.canvasHeight});
+		setCanvasSizeBasedOnWindowSize();
+		//$("canvas").attr({width:json.canvasWidth,height:json.canvasHeight});
 	})
 	.fail(function(){ // jsonの読み込みに失敗した時
 		console.log('失敗');
@@ -41,6 +42,16 @@ $(document).ready(function(){
 	.always(function(){ // 成功/失敗に関わらず実行
 		console.log('必ず実行される');
 	});
+
+	//ブラウザの画面サイズが変わったら必要に応じてドットの表示エリアを調節する
+	$(window).resize(function(){
+		//alert("resized");
+		setCanvasSizeBasedOnWindowSize();
+		//counting中だったら、finishボタンを押してリセットする(再描画時に点が消えるため)
+		if($('.btn-finish').prop('disabled')==false)
+			$('.btn-finish').click();
+	});
+
 	//startボタンを押したらdotを描画する
 	$('.btn-start').click(function(){
 		//canvasをクリア
@@ -233,6 +244,35 @@ function saveText(text, filename){
 	    a.download = filename;
 	    a.click();
 	}
+}
+
+//windowsizeに応じてcanvasのサイズを調節する
+function setCanvasSizeBasedOnWindowSize(){
+	//windowとconfigのサイズを取得
+	var wW = $(window).width(), wH = $(window).height();
+	var cW = config.canvasWidth, cH = config.canvasHeight;
+	console.log(JSON.stringify(config));
+
+	var newWidth = cW, newHeight = cH;
+
+	if(wW < cW || wH < cH){//configで指定したサイズがwindowからはみ出ている場合
+		//アスペクト比の計算
+		var wRatio = wH/wW, cRatio = cH/cW;
+
+		//アスペクト比をconfigと合わせつつ、画面内に収まるようにキャンバスサイズを調整する。
+		if(wRatio < cRatio){ //cRatio大(=configのほうが縦長)なら、少なくとも縦がはみ出ているはず(縦がはみ出なければ横もはみ出ないことになる)で、縦を合わせれば確実にwindowに収まる
+			newHeight = wH;
+			newWidth = newHeight/cRatio;
+		}else{ //cRatio小(=configのほうが横長)なら、少なくとも横がはみ出ているはず(横がはみ出なければ縦もはみ出ないことになる)で、横を合わせれば確実にwindowに収まる
+			newWidth = wW;
+			newHeight = newWidth*cRatio;
+		}
+	}else{ //configで指定したサイズがwindowに収まっている場合
+		//特に何もしない
+	}
+
+	//計算されたサイズをキャンバスサイズに指定
+	$("canvas").attr({width:newWidth,height:newHeight});
 }
 
 
